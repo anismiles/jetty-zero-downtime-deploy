@@ -1,0 +1,30 @@
+# This is the file Jetty will try to load when you execute its "$JETTY_HOME/bin/jetty.sh" 
+# script (does not apply for "java -jar start.jar", which then you should passs
+# all relevant information by hand, and we don't cover it here). 
+# As of Jetty 8, the "$JETTY_HOME/bin/jetty.sh" script will, by default, try read these settings
+# from the following files:
+#
+# 	1) /etc/default/jetty
+# 	2) $HOME/.jettyrc
+#
+# So in practice you can rename this file to any of those two. However, please
+# keep in mind that if you have more than one Jetty service running in the same
+# machine or user, that Jetty will also read these settings, which could lead
+# to unexpected problems (a good example is using one Jetty for the Webapp, and other for Solr).
+# 
+# In such case, you may do something like this: save this file as $JETTY_HOME/jetty_config, and add 
+# the following like to your $JETTY_HOME/bin/jetty.sh:
+#
+# source "$(readlink -f $0 | xargs dirname)/../jetty_config"
+#
+# That way, you can have different settings for different Jettys. 
+#
+
+JETTY_PORT=8080
+JETTY_RUN=/tmp/jetty.8080
+
+# You may also want to define these here:
+#
+#JETTY_HOME=/opt/jetty
+#APACHE_HOST_CONF=/etc/httpd/conf.d/example.conf
+#

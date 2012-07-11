@@ -1,11 +1,19 @@
 #!/bin/bash
-# deploy stop_previous
-# deploy start_new
-# deploy switch_apache_ports
-# "start_new" starts a new Jetty server on an unused port
+#
+# jetty_deploy.sh start_new: starts a new Jetty server on an unused port (either 8080 or 8081)
+# jetty_deploy.sh stop_previous: stops the Jetty running in the opposite port of the "current" Jetty
+# jetty_deploy.sh switch_apache_ports: only switches the port settings in $APACHE_HOST_CONF
+#
+
+if [[ -z "$JETTY_CONFIG" || ! -f "$JETTY_CONFIG" ]]; then
+	echo "JETTY_CONFIG not found or not defined. It should point to the Jetty configuration file (like /etc/default/jetty, for example)"
+	exit 1
+fi
+
+source $JETTY_CONFIG
 
 if [[ -z "$APACHE_HOST_CONF" ]]; then
-	echo "APACHE_HOST_CONF should be defined, pointing to the httpd host configuration of you domain"
+	echo "APACHE_HOST_CONF should be defined, pointing to the httpd host configuration of your domain"
 	exit 1
 fi
 
@@ -22,8 +30,8 @@ get_opposite_port() {
 	fi
 }
 
-# Optional argumento: new port. If not specified, the function 
-# takes the current value in APACHE_HOST_CONF e switches it
+# Optional argument: new port. If not specified, the function 
+# takes the current value in APACHE_HOST_CONF and switches it
 change_apache_ports() {
 	sed_args=$(get_sed_args)
 	current_proxy_port=`egrep -m 1 -o "http[s]?://localhost:([0-9]+)" $APACHE_HOST_CONF | cut -d':' -f 3`
@@ -54,22 +62,30 @@ if [[ -z "$JETTY_HOME" ]]; then
 	exit 1
 fi
 
-config="/etc/default/jetty"
-
-if [[ ! -f "$config" ]]; then
-	echo "$config not found"
-	exit 1
-fi
-
-
-current_running_port=`grep 'JETTY_PORT=' $config | sed 's/JETTY_PORT=//'`
+current_running_port=`grep 'JETTY_PORT=' $JETTY_CONFIG | sed 's/JETTY_PORT=//'`
 
 if [[ $action == "stop_previous" ]]; then
 	shutdown_port=$(get_opposite_port $current_running_port)
 	pid_file=$JETTY_HOME/jetty.$shutdown_port/jetty.pid
 
 	if [[ -f $pid_file ]]; then
-		kill -9 `cat $pid_file` 2> /dev/null
+		kill_pid=`cat $pid_file`
+		kill $kill_pid 2> /dev/null
+		timeout=30
+
+		still_running() {
+			local PID=$(cat $pid_file 2> /dev/null) || return 1
+			kill -0 $PID 2> /dev/null
+		}
+
+		while still_running; do
+			if [[ timeout-- -le 0 ]]; then
+				kill -KILL $kill_pid 2> /dev/null
+			fi
+
+			sleep 1
+		done
+
 		echo "Port $shutdown_port finished"
 		rm -f $pid_file
 	else
@@ -85,10 +101,10 @@ elif [[ $action == "start_new" ]]; then
 	new_port=$(get_opposite_port $current_running_port)
 
 	sed_args=$(get_sed_args)
-	sed $sed_args "s/JETTY_PORT=\(.*\)/JETTY_PORT=$new_port/" $config
+	sed $sed_args "s/JETTY_PORT=\(.*\)/JETTY_PORT=$new_port/" $JETTY_CONFIG
 	jetty_run=$JETTY_HOME/jetty.$new_port
 	mkdir -p $jetty_run
-	sed $sed_args "s|JETTY_RUN=\(.*\)|JETTY_RUN=$jetty_run|" $config
+	sed $sed_args "s|JETTY_RUN=\(.*\)|JETTY_RUN=$jetty_run|" $JETTY_CONFIG
 	ln -nfs $jetty_run $JETTY_HOME/jetty_run
 	ln -nfs $JETTY_HOME/jetty_run/jetty.pid $JETTY_HOME/jetty.pid
 
