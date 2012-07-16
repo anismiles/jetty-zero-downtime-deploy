@@ -19,12 +19,14 @@
 #
 # That way, you can have different settings for different Jettys. 
 #
+# ATTENTION: You *should* export the VARIABLES, otherwise something may not work correctly 
+#
 
-JETTY_PORT=8080
-JETTY_RUN=/tmp/jetty.8080
+export JETTY_PORT=8080
+export JETTY_RUN=/tmp/jetty.8080
 
 # You may also want to define these here:
 #
-#JETTY_HOME=/opt/jetty
-#APACHE_HOST_CONF=/etc/httpd/conf.d/example.conf
+#export JETTY_HOME=/opt/jetty
+#export APACHE_HOST_CONF=/etc/httpd/conf.d/example.conf
 #
